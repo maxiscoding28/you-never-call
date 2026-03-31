@@ -1,0 +1,67 @@
+{{template "layout" .}}
+
+{{define "content"}}
+<article>
+    <header>
+        <h2>{{if .IsNew}}New Contact{{else}}Edit Contact{{end}}</h2>
+    </header>
+
+    <form method="POST"
+          action="{{if .IsNew}}/contact/new{{else}}/contact/{{.Contact.ID}}/update{{end}}">
+
+        <div class="grid">
+            <label>
+                First Name
+                <input type="text" name="first_name" value="{{.Contact.FirstName}}"
+                       required placeholder="First name" autofocus>
+            </label>
+            <label>
+                Last Name
+                <input type="text" name="last_name" value="{{.Contact.LastName}}"
+                       required placeholder="Last name">
+            </label>
+        </div>
+
+        <div class="grid">
+            <label>
+                Last Contact Date
+                <input type="date" name="last_contact_date"
+                       value="{{formatDateInput .Contact.LastContactDate}}">
+            </label>
+            <label>
+                Frequency (days)
+                <input type="number" name="frequency_days" min="1" max="365"
+                       value="{{.Contact.FrequencyDays}}" required>
+            </label>
+        </div>
+
+        <label>
+            Group
+            <select name="group_id">
+                <option value="0">— No Group —</option>
+                {{$gid := groupIDValue .Contact.GroupID}}
+                {{range .Groups}}
+                <option value="{{.ID}}" {{if eq .ID $gid}}selected{{end}}>{{.Name}}</option>
+                {{end}}
+            </select>
+        </label>
+
+        <div class="grid">
+            <button type="submit">{{if .IsNew}}Create Contact{{else}}Save Changes{{end}}</button>
+            <a href="/" role="button" class="outline">Cancel</a>
+        </div>
+    </form>
+
+    {{if not .IsNew}}
+    <footer>
+        <details>
+            <summary role="button" class="outline secondary">Danger Zone</summary>
+            <form method="POST" action="/contact/{{.Contact.ID}}/delete"
+                  onsubmit="return confirm('Delete this contact permanently?')">
+                <button type="submit" class="secondary">Delete Contact</button>
+            </form>
+        </details>
+    </footer>
+    {{end}}
+</article>
+{{end}}

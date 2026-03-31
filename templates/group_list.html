@@ -1,0 +1,30 @@
+{{define "group_list"}}
+{{if .Groups}}
+<table role="grid">
+    <thead>
+        <tr>
+            <th>Group Name</th>
+            <th style="width:120px;text-align:right;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Groups}}
+        <tr>
+            <td>{{.Name}}</td>
+            <td style="text-align:right;">
+                <button class="outline secondary" style="font-size:0.8rem;padding:0.25rem 0.75rem;"
+                        hx-post="/groups/{{.ID}}/delete"
+                        hx-target="#group-list"
+                        hx-swap="innerHTML"
+                        hx-confirm="Delete group '{{.Name}}'? Contacts in this group will become ungrouped.">
+                    Delete
+                </button>
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{else}}
+<p class="empty-state">No groups yet. Create one above.</p>
+{{end}}
+{{end}}

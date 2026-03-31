@@ -1,0 +1,143 @@
+{{template "layout" .}}
+
+{{define "content"}}
+<div class="actions-bar">
+    <div class="view-toggle">
+        <a href="/?view=all&sort={{.Sort}}&dir={{.Dir}}"
+           role="button" {{if ne .View "grouped"}}class="primary"{{else}}class="outline"{{end}}>
+            All Contacts
+        </a>
+        <a href="/?view=grouped&sort={{.Sort}}&dir={{.Dir}}"
+           role="button" {{if eq .View "grouped"}}class="primary"{{else}}class="outline"{{end}}>
+            Grouped View
+        </a>
+    </div>
+    <a href="/contact/new" role="button">+ New Contact</a>
+</div>
+
+<div id="contact-area">
+{{if eq .View "grouped"}}
+    {{template "grouped_tables" .}}
+{{else}}
+    {{template "all_table" .}}
+{{end}}
+</div>
+{{end}}
+
+{{define "all_table"}}
+<table role="grid">
+    <thead>
+        <tr>
+            <th></th>
+            <th>
+                <a hx-get="/contacts/rows?sort=first_name&dir={{nextDir .Sort .Dir "first_name"}}&view={{.View}}"
+                   hx-target="#contact-area" hx-swap="innerHTML">
+                    First Name{{sortArrow .Sort .Dir "first_name"}}
+                </a>
+            </th>
+            <th>
+                <a hx-get="/contacts/rows?sort=last_name&dir={{nextDir .Sort .Dir "last_name"}}&view={{.View}}"
+                   hx-target="#contact-area" hx-swap="innerHTML">
+                    Last Name{{sortArrow .Sort .Dir "last_name"}}
+                </a>
+            </th>
+            <th>
+                <a hx-get="/contacts/rows?sort=last_contact_date&dir={{nextDir .Sort .Dir "last_contact_date"}}&view={{.View}}"
+                   hx-target="#contact-area" hx-swap="innerHTML">
+                    Last Contact{{sortArrow .Sort .Dir "last_contact_date"}}
+                </a>
+            </th>
+            <th>Frequency</th>
+            <th>Group</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    {{if .Contacts}}
+        {{range .Contacts}}
+        <tr>
+            <td>
+                {{if eq .Status "Overdue"}}<span class="status-dot status-overdue" title="Overdue"></span>
+                {{else if eq .Status "Due Soon"}}<span class="status-dot status-due-soon" title="Due Soon"></span>
+                {{else}}<span class="status-dot status-ok" title="OK"></span>{{end}}
+            </td>
+            <td><a href="/contact/{{.ID}}">{{.FirstName}}</a></td>
+            <td><a href="/contact/{{.ID}}">{{.LastName}}</a></td>
+            <td>{{formatDate .LastContactDate}}</td>
+            <td>{{.FrequencyDays}} days</td>
+            <td>{{if .GroupName}}{{.GroupName}}{{else}}—{{end}}</td>
+            <td>
+                {{if eq .Status "Overdue"}}<span class="status-text-overdue">Overdue</span>
+                {{else if eq .Status "Due Soon"}}<span class="status-text-due-soon">Due Soon</span>
+                {{else}}<span class="status-text-ok">OK</span>{{end}}
+            </td>
+        </tr>
+        {{end}}
+    {{else}}
+        <tr><td colspan="7" class="empty-state">No contacts yet. <a href="/contact/new">Add one?</a></td></tr>
+    {{end}}
+    </tbody>
+</table>
+{{end}}
+
+{{define "grouped_tables"}}
+{{if .GroupNames}}
+    {{$root := .}}
+    {{range .GroupNames}}
+    <div class="group-section">
+        <h3>{{.}}</h3>
+        <table role="grid">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>
+                        <a hx-get="/contacts/rows?sort=first_name&dir={{nextDir $root.Sort $root.Dir "first_name"}}&view=grouped"
+                           hx-target="#contact-area" hx-swap="innerHTML">
+                            First Name{{sortArrow $root.Sort $root.Dir "first_name"}}
+                        </a>
+                    </th>
+                    <th>
+                        <a hx-get="/contacts/rows?sort=last_name&dir={{nextDir $root.Sort $root.Dir "last_name"}}&view=grouped"
+                           hx-target="#contact-area" hx-swap="innerHTML">
+                            Last Name{{sortArrow $root.Sort $root.Dir "last_name"}}
+                        </a>
+                    </th>
+                    <th>
+                        <a hx-get="/contacts/rows?sort=last_contact_date&dir={{nextDir $root.Sort $root.Dir "last_contact_date"}}&view=grouped"
+                           hx-target="#contact-area" hx-swap="innerHTML">
+                            Last Contact{{sortArrow $root.Sort $root.Dir "last_contact_date"}}
+                        </a>
+                    </th>
+                    <th>Frequency</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {{$groupName := .}}
+            {{$contacts := index $root.GroupedContacts $groupName}}
+            {{range $contacts}}
+                <tr>
+                    <td>
+                        {{if eq .Status "Overdue"}}<span class="status-dot status-overdue" title="Overdue"></span>
+                        {{else if eq .Status "Due Soon"}}<span class="status-dot status-due-soon" title="Due Soon"></span>
+                        {{else}}<span class="status-dot status-ok" title="OK"></span>{{end}}
+                    </td>
+                    <td><a href="/contact/{{.ID}}">{{.FirstName}}</a></td>
+                    <td><a href="/contact/{{.ID}}">{{.LastName}}</a></td>
+                    <td>{{formatDate .LastContactDate}}</td>
+                    <td>{{.FrequencyDays}} days</td>
+                    <td>
+                        {{if eq .Status "Overdue"}}<span class="status-text-overdue">Overdue</span>
+                        {{else if eq .Status "Due Soon"}}<span class="status-text-due-soon">Due Soon</span>
+                        {{else}}<span class="status-text-ok">OK</span>{{end}}
+                    </td>
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{end}}
+{{else}}
+    <div class="empty-state">No contacts yet. <a href="/contact/new">Add one?</a></div>
+{{end}}
+{{end}}
