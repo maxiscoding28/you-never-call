@@ -93,6 +93,7 @@ func (h *Handlers) handleIndex(w http.ResponseWriter, r *http.Request) {
 	sortCol := r.URL.Query().Get("sort")
 	sortDir := r.URL.Query().Get("dir")
 	view := r.URL.Query().Get("view")
+	filter := r.URL.Query().Get("filter")
 
 	if sortCol == "" {
 		sortCol = "last_name"
@@ -103,11 +104,15 @@ func (h *Handlers) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if view == "" {
 		view = "all"
 	}
+	if filter != "overdue" {
+		filter = "all"
+	}
 
 	data := map[string]interface{}{
-		"Sort": sortCol,
-		"Dir":  sortDir,
-		"View": view,
+		"Sort":   sortCol,
+		"Dir":    sortDir,
+		"View":   view,
+		"Filter": filter,
 	}
 
 	if view == "grouped" {
@@ -116,6 +121,7 @@ func (h *Handlers) handleIndex(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+		grouped = applyOverdueFilterGrouped(grouped, filter)
 		groupNames := sortedGroupNames(grouped)
 		data["GroupedContacts"] = grouped
 		data["GroupNames"] = groupNames
@@ -125,7 +131,7 @@ func (h *Handlers) handleIndex(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		data["Contacts"] = contacts
+		data["Contacts"] = applyOverdueFilter(contacts, filter)
 	}
 
 	h.renderPage(w, "index", "index.html", data)
@@ -137,6 +143,7 @@ func (h *Handlers) handleContactRows(w http.ResponseWriter, r *http.Request) {
 	sortCol := r.URL.Query().Get("sort")
 	sortDir := r.URL.Query().Get("dir")
 	view := r.URL.Query().Get("view")
+	filter := r.URL.Query().Get("filter")
 
 	if sortCol == "" {
 		sortCol = "last_name"
@@ -144,11 +151,15 @@ func (h *Handlers) handleContactRows(w http.ResponseWriter, r *http.Request) {
 	if sortDir == "" {
 		sortDir = "asc"
 	}
+	if filter != "overdue" {
+		filter = "all"
+	}
 
 	data := map[string]interface{}{
-		"Sort": sortCol,
-		"Dir":  sortDir,
-		"View": view,
+		"Sort":   sortCol,
+		"Dir":    sortDir,
+		"View":   view,
+		"Filter": filter,
 	}
 
 	if view == "grouped" {
@@ -157,6 +168,7 @@ func (h *Handlers) handleContactRows(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+		grouped = applyOverdueFilterGrouped(grouped, filter)
 		groupNames := sortedGroupNames(grouped)
 		data["GroupedContacts"] = grouped
 		data["GroupNames"] = groupNames
@@ -167,7 +179,7 @@ func (h *Handlers) handleContactRows(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		data["Contacts"] = contacts
+		data["Contacts"] = applyOverdueFilter(contacts, filter)
 		h.renderPartial(w, "all_table", data)
 	}
 }
@@ -328,6 +340,33 @@ func (h *Handlers) renderPartial(w http.ResponseWriter, name string, data interf
 		log.Printf("partial template error: %v", err)
 		http.Error(w, "Internal server error", 500)
 	}
+}
+
+func applyOverdueFilter(contacts []Contact, filter string) []Contact {
+	if filter != "overdue" {
+		return contacts
+	}
+	out := make([]Contact, 0, len(contacts))
+	for _, c := range contacts {
+		if c.Status == "Overdue" {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func applyOverdueFilterGrouped(grouped map[string][]Contact, filter string) map[string][]Contact {
+	if filter != "overdue" {
+		return grouped
+	}
+	out := make(map[string][]Contact, len(grouped))
+	for name, contacts := range grouped {
+		filtered := applyOverdueFilter(contacts, filter)
+		if len(filtered) > 0 {
+			out[name] = filtered
+		}
+	}
+	return out
 }
 
 func sortedGroupNames(grouped map[string][]Contact) []string {

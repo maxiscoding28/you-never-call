@@ -2,17 +2,29 @@
 
 {{define "content"}}
 <div class="actions-bar">
-    <div class="view-toggle">
-        <a href="/?view=all&sort={{.Sort}}&dir={{.Dir}}"
-           role="button" {{if ne .View "grouped"}}class="primary"{{else}}class="outline"{{end}}>
-            All Contacts
-        </a>
-        <a href="/?view=grouped&sort={{.Sort}}&dir={{.Dir}}"
-           role="button" {{if eq .View "grouped"}}class="primary"{{else}}class="outline"{{end}}>
-            Grouped View
-        </a>
+    <div class="actions-left">
+        <div class="btn-group" role="group" aria-label="View">
+            <a href="/?view=all&sort={{.Sort}}&dir={{.Dir}}&filter={{.Filter}}"
+               class="btn{{if ne .View "grouped"}} active{{end}}">
+                All Contacts
+            </a>
+            <a href="/?view=grouped&sort={{.Sort}}&dir={{.Dir}}&filter={{.Filter}}"
+               class="btn{{if eq .View "grouped"}} active{{end}}">
+                Grouped View
+            </a>
+        </div>
+        <div class="btn-group" role="group" aria-label="Filter">
+            <a href="/?view={{.View}}&sort={{.Sort}}&dir={{.Dir}}&filter=all"
+               class="btn{{if ne .Filter "overdue"}} active{{end}}">
+                All
+            </a>
+            <a href="/?view={{.View}}&sort={{.Sort}}&dir={{.Dir}}&filter=overdue"
+               class="btn{{if eq .Filter "overdue"}} active{{end}}">
+                Overdue Only
+            </a>
+        </div>
     </div>
-    <a href="/contact/new" role="button">+ New Contact</a>
+    <a href="/contact/new" class="btn btn-primary">+ New Contact</a>
 </div>
 
 <div id="contact-area">
@@ -30,24 +42,29 @@
         <tr>
             <th></th>
             <th>
-                <a hx-get="/contacts/rows?sort=first_name&dir={{nextDir .Sort .Dir "first_name"}}&view={{.View}}"
+                <a hx-get="/contacts/rows?sort=first_name&dir={{nextDir .Sort .Dir "first_name"}}&view={{.View}}&filter={{.Filter}}"
                    hx-target="#contact-area" hx-swap="innerHTML">
                     First Name{{sortArrow .Sort .Dir "first_name"}}
                 </a>
             </th>
             <th>
-                <a hx-get="/contacts/rows?sort=last_name&dir={{nextDir .Sort .Dir "last_name"}}&view={{.View}}"
+                <a hx-get="/contacts/rows?sort=last_name&dir={{nextDir .Sort .Dir "last_name"}}&view={{.View}}&filter={{.Filter}}"
                    hx-target="#contact-area" hx-swap="innerHTML">
                     Last Name{{sortArrow .Sort .Dir "last_name"}}
                 </a>
             </th>
             <th>
-                <a hx-get="/contacts/rows?sort=last_contact_date&dir={{nextDir .Sort .Dir "last_contact_date"}}&view={{.View}}"
+                <a hx-get="/contacts/rows?sort=last_contact_date&dir={{nextDir .Sort .Dir "last_contact_date"}}&view={{.View}}&filter={{.Filter}}"
                    hx-target="#contact-area" hx-swap="innerHTML">
                     Last Contact{{sortArrow .Sort .Dir "last_contact_date"}}
                 </a>
             </th>
-            <th>Frequency</th>
+            <th>
+                <a hx-get="/contacts/rows?sort=frequency_days&dir={{nextDir .Sort .Dir "frequency_days"}}&view={{.View}}&filter={{.Filter}}"
+                   hx-target="#contact-area" hx-swap="innerHTML">
+                    Frequency{{sortArrow .Sort .Dir "frequency_days"}}
+                </a>
+            </th>
             <th>Group</th>
             <th>Status</th>
         </tr>
@@ -74,7 +91,7 @@
         </tr>
         {{end}}
     {{else}}
-        <tr><td colspan="7" class="empty-state">No contacts yet. <a href="/contact/new">Add one?</a></td></tr>
+        <tr><td colspan="7" class="empty-state">{{if eq .Filter "overdue"}}No overdue contacts. Nice work!{{else}}No contacts yet. <a href="/contact/new">Add one?</a>{{end}}</td></tr>
     {{end}}
     </tbody>
 </table>
@@ -91,24 +108,29 @@
                 <tr>
                     <th></th>
                     <th>
-                        <a hx-get="/contacts/rows?sort=first_name&dir={{nextDir $root.Sort $root.Dir "first_name"}}&view=grouped"
+                        <a hx-get="/contacts/rows?sort=first_name&dir={{nextDir $root.Sort $root.Dir "first_name"}}&view=grouped&filter={{$root.Filter}}"
                            hx-target="#contact-area" hx-swap="innerHTML">
                             First Name{{sortArrow $root.Sort $root.Dir "first_name"}}
                         </a>
                     </th>
                     <th>
-                        <a hx-get="/contacts/rows?sort=last_name&dir={{nextDir $root.Sort $root.Dir "last_name"}}&view=grouped"
+                        <a hx-get="/contacts/rows?sort=last_name&dir={{nextDir $root.Sort $root.Dir "last_name"}}&view=grouped&filter={{$root.Filter}}"
                            hx-target="#contact-area" hx-swap="innerHTML">
                             Last Name{{sortArrow $root.Sort $root.Dir "last_name"}}
                         </a>
                     </th>
                     <th>
-                        <a hx-get="/contacts/rows?sort=last_contact_date&dir={{nextDir $root.Sort $root.Dir "last_contact_date"}}&view=grouped"
+                        <a hx-get="/contacts/rows?sort=last_contact_date&dir={{nextDir $root.Sort $root.Dir "last_contact_date"}}&view=grouped&filter={{$root.Filter}}"
                            hx-target="#contact-area" hx-swap="innerHTML">
                             Last Contact{{sortArrow $root.Sort $root.Dir "last_contact_date"}}
                         </a>
                     </th>
-                    <th>Frequency</th>
+                    <th>
+                        <a hx-get="/contacts/rows?sort=frequency_days&dir={{nextDir $root.Sort $root.Dir "frequency_days"}}&view=grouped&filter={{$root.Filter}}"
+                           hx-target="#contact-area" hx-swap="innerHTML">
+                            Frequency{{sortArrow $root.Sort $root.Dir "frequency_days"}}
+                        </a>
+                    </th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -138,6 +160,6 @@
     </div>
     {{end}}
 {{else}}
-    <div class="empty-state">No contacts yet. <a href="/contact/new">Add one?</a></div>
+    <div class="empty-state">{{if eq .Filter "overdue"}}No overdue contacts. Nice work!{{else}}No contacts yet. <a href="/contact/new">Add one?</a>{{end}}</div>
 {{end}}
 {{end}}

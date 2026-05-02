@@ -1,21 +1,21 @@
 {{template "layout" .}}
 
 {{define "content"}}
-<article>
-    <header>
-        <h2>Manage Groups</h2>
-    </header>
+<h2>Manage Groups</h2>
 
-    <form hx-post="/groups/create" hx-target="#group-list" hx-swap="innerHTML"
-          hx-on::after-request="if(event.detail.successful) this.reset()">
-        <div class="grid">
+<form hx-post="/groups/create" hx-target="#group-list" hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) this.reset()">
+    <div class="form-row">
+        <div>
             <input type="text" name="name" placeholder="New group name…" required>
-            <button type="submit">Add Group</button>
         </div>
-    </form>
-
-    <div id="group-list">
-        {{template "group_list" .}}
+        <div>
+            <button type="submit" class="btn btn-primary">Add Group</button>
+        </div>
     </div>
-</article>
+</form>
+
+<div id="group-list">
+    {{template "group_list" .}}
+</div>
 {{end}}
