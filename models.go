@@ -18,6 +18,7 @@ type Contact struct {
 	FrequencyDays   int
 	GroupID         sql.NullInt64
 	GroupName       string
+	Notes           string
 	Status          string
 }
 

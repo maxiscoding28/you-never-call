@@ -92,6 +92,13 @@
             background: var(--bg); color: var(--fg); font-family: inherit; margin-bottom: 1rem;
         }
         input:focus, select:focus { outline: none; border-color: #999; }
+        textarea {
+            display: block; width: 100%; padding: 0.45rem 0.6rem; font-size: 0.875rem;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            background: var(--bg); color: var(--fg); font-family: inherit; margin-bottom: 1rem;
+            resize: vertical; min-height: 5rem;
+        }
+        textarea:focus { outline: none; border-color: #999; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
         /* Layout helpers */
@@ -125,7 +132,6 @@
             <div class="nav-links">
                 <a href="/">Dashboard</a>
                 <a href="/groups">Groups</a>
-                <a href="/contact/new">+ Contact</a>
             </div>
         </div>
     </nav>
@@ -136,9 +142,30 @@
     </main>
     <footer class="site-footer">
         <div class="container">
-            <small>You Never Call - A local-first, personal CRM</small>
+            <small>You Never Call</small>
         </div>
     </footer>
+    <script>
+        // Persist dashboard view ("all"/"grouped") and filter ("all"/"overdue") in localStorage
+        // so the user's preference survives browser refreshes.
+        (function () {
+            if (window.location.pathname !== "/") return;
+            var params = new URLSearchParams(window.location.search);
+            var hasView = params.has("view");
+            var hasFilter = params.has("filter");
+            if (hasView || hasFilter) {
+                if (hasView) localStorage.setItem("ync.view", params.get("view"));
+                if (hasFilter) localStorage.setItem("ync.filter", params.get("filter"));
+                return;
+            }
+            var savedView = localStorage.getItem("ync.view");
+            var savedFilter = localStorage.getItem("ync.filter");
+            if (!savedView && !savedFilter) return;
+            if (savedView) params.set("view", savedView);
+            if (savedFilter) params.set("filter", savedFilter);
+            window.location.replace("/?" + params.toString());
+        })();
+    </script>
 </body>
 </html>
 {{end}}

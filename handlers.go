@@ -400,6 +400,7 @@ func parseContactForm(r *http.Request) (Contact, error) {
 		FirstName:     firstName,
 		LastName:      lastName,
 		FrequencyDays: 30,
+		Notes:         strings.TrimSpace(r.FormValue("notes")),
 	}
 
 	if freq := r.FormValue("frequency_days"); freq != "" {

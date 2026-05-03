@@ -43,6 +43,11 @@
         </select>
     </div>
 
+    <div>
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="5" placeholder="Anything you want to remember…">{{.Contact.Notes}}</textarea>
+    </div>
+
     <div class="form-row">
         <div><button type="submit" class="btn btn-primary">{{if .IsNew}}Create Contact{{else}}Save Changes{{end}}</button></div>
         <div><a href="/" class="btn">Cancel</a></div>

@@ -1,6 +1,6 @@
 # ☎ You Never Call
 
-A local-first, minimalist CRM built with Go, SQLite, HTMX, and Pico.css.
+A local-first, minimalist CRM built with Go, SQLite, HTMX, and hand-rolled CSS.
 
 Track your contacts, how often you should reach out, and who you're overdue to call.
 
@@ -34,7 +34,7 @@ The SQLite database file (`contacts.db`) is created automatically on first run. 
 - **Overdue Tracking** — Visual indicators show which contacts are overdue (red), due soon (orange), or OK (green)
 - **Sortable Tables** — Click column headers to sort by name or date, ascending or descending — powered by HTMX, no page reload
 - **Grouped View** — Toggle between a flat list and contacts organized by group
-- **Clean Desk Design** — Minimal, high-contrast UI using Pico.css
+- **Clean Desk Design** — Minimal, high-contrast UI with custom, dependency-free CSS
 
 ## Tech Stack
 
@@ -42,7 +42,7 @@ The SQLite database file (`contacts.db`) is created automatically on first run. 
 |----------|------------------------------------|
 | Backend  | Go (standard library `net/http`)   |
 | Database | SQLite via `modernc.org/sqlite`    |
-| Frontend | HTML5, Pico.css, HTMX             |
+| Frontend | HTML5, custom CSS, HTMX            |
 | Routing  | Go 1.22+ `http.ServeMux` patterns  |
 
 ## Project Structure

@@ -2,12 +2,17 @@ package main
 
 import (
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+//go:embed migrations.sql
+var migrationsSQL string
 
 func InitDB(path string) (*sql.DB, error) {
 	dsn := path + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)"
@@ -21,6 +26,11 @@ func InitDB(path string) (*sql.DB, error) {
 	if err := createTables(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("create tables: %w", err)
+	}
+
+	if err := runMigrations(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
 	log.Println("Database initialized:", path)
@@ -45,6 +55,103 @@ func createTables(db *sql.DB) error {
 		);
 	`)
 	return err
+}
+
+// runMigrations applies migrations defined in migrations.sql. Each migration
+// is delimited by a "-- migration: <name>" header. Applied names are tracked
+// in the schema_migrations table so each migration runs at most once.
+func runMigrations(db *sql.DB) error {
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+		name TEXT PRIMARY KEY,
+		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`); err != nil {
+		return fmt.Errorf("create schema_migrations: %w", err)
+	}
+
+	// Backfill: mark migrations whose effects are already present in
+	// pre-existing databases (created before schema_migrations existed).
+	if columnExists(db, "contacts", "notes") {
+		if _, err := db.Exec(`INSERT OR IGNORE INTO schema_migrations (name) VALUES (?)`, "001_add_contacts_notes"); err != nil {
+			return fmt.Errorf("backfill migration: %w", err)
+		}
+	}
+
+	migrations, err := parseMigrations(migrationsSQL)
+	if err != nil {
+		return err
+	}
+
+	for _, m := range migrations {
+		var exists int
+		if err := db.QueryRow(`SELECT COUNT(1) FROM schema_migrations WHERE name = ?`, m.name).Scan(&exists); err != nil {
+			return fmt.Errorf("check migration %s: %w", m.name, err)
+		}
+		if exists > 0 {
+			continue
+		}
+		if _, err := db.Exec(m.sql); err != nil {
+			return fmt.Errorf("apply migration %s: %w", m.name, err)
+		}
+		if _, err := db.Exec(`INSERT INTO schema_migrations (name) VALUES (?)`, m.name); err != nil {
+			return fmt.Errorf("record migration %s: %w", m.name, err)
+		}
+		log.Printf("Migration applied: %s", m.name)
+	}
+	return nil
+}
+
+type migration struct {
+	name string
+	sql  string
+}
+
+func parseMigrations(src string) ([]migration, error) {
+	var out []migration
+	var cur *migration
+	for i, line := range strings.Split(src, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "-- migration:") {
+			name := strings.TrimSpace(strings.TrimPrefix(trimmed, "-- migration:"))
+			if name == "" {
+				return nil, fmt.Errorf("migrations.sql line %d: empty migration name", i+1)
+			}
+			out = append(out, migration{name: name})
+			cur = &out[len(out)-1]
+			continue
+		}
+		if cur == nil {
+			// Skip preamble (comments / blank lines before first header).
+			continue
+		}
+		cur.sql += line + "\n"
+	}
+	for i := range out {
+		if strings.TrimSpace(out[i].sql) == "" {
+			return nil, fmt.Errorf("migration %s has no SQL body", out[i].name)
+		}
+	}
+	return out, nil
+}
+
+func columnExists(db *sql.DB, table, column string) bool {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return false
+		}
+		if name == column {
+			return true
+		}
+	}
+	return false
 }
 
 // --- Sort helpers ---
@@ -74,7 +181,7 @@ func GetAllContacts(db *sql.DB, sortCol, sortDir string) ([]Contact, error) {
 	col, dir := sanitizeSort(sortCol, sortDir)
 	query := fmt.Sprintf(`
 		SELECT c.id, c.first_name, c.last_name, c.last_contact_date,
-		       c.frequency_days, c.group_id, COALESCE(g.name, '')
+		       c.frequency_days, c.group_id, COALESCE(g.name, ''), c.notes
 		FROM contacts c
 		LEFT JOIN groups g ON c.group_id = g.id
 		ORDER BY %s %s
@@ -111,12 +218,12 @@ func GetContact(db *sql.DB, id int64) (Contact, error) {
 	var dateStr sql.NullString
 	err := db.QueryRow(`
 		SELECT c.id, c.first_name, c.last_name, c.last_contact_date,
-		       c.frequency_days, c.group_id, COALESCE(g.name, '')
+		       c.frequency_days, c.group_id, COALESCE(g.name, ''), c.notes
 		FROM contacts c
 		LEFT JOIN groups g ON c.group_id = g.id
 		WHERE c.id = ?
 	`, id).Scan(&c.ID, &c.FirstName, &c.LastName, &dateStr,
-		&c.FrequencyDays, &c.GroupID, &c.GroupName)
+		&c.FrequencyDays, &c.GroupID, &c.GroupName, &c.Notes)
 	if err != nil {
 		return c, err
 	}
@@ -140,9 +247,9 @@ func CreateContact(db *sql.DB, c Contact) error {
 		groupVal = c.GroupID.Int64
 	}
 	_, err := db.Exec(`
-		INSERT INTO contacts (first_name, last_name, last_contact_date, frequency_days, group_id)
-		VALUES (?, ?, ?, ?, ?)
-	`, c.FirstName, c.LastName, dateVal, c.FrequencyDays, groupVal)
+		INSERT INTO contacts (first_name, last_name, last_contact_date, frequency_days, group_id, notes)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, c.FirstName, c.LastName, dateVal, c.FrequencyDays, groupVal, c.Notes)
 	return err
 }
 
@@ -158,9 +265,9 @@ func UpdateContact(db *sql.DB, c Contact) error {
 	_, err := db.Exec(`
 		UPDATE contacts
 		SET first_name = ?, last_name = ?, last_contact_date = ?,
-		    frequency_days = ?, group_id = ?
+		    frequency_days = ?, group_id = ?, notes = ?
 		WHERE id = ?
-	`, c.FirstName, c.LastName, dateVal, c.FrequencyDays, groupVal, c.ID)
+	`, c.FirstName, c.LastName, dateVal, c.FrequencyDays, groupVal, c.Notes, c.ID)
 	return err
 }
 
@@ -212,7 +319,7 @@ func scanContacts(rows *sql.Rows) ([]Contact, error) {
 		var c Contact
 		var dateStr sql.NullString
 		if err := rows.Scan(&c.ID, &c.FirstName, &c.LastName, &dateStr,
-			&c.FrequencyDays, &c.GroupID, &c.GroupName); err != nil {
+			&c.FrequencyDays, &c.GroupID, &c.GroupName, &c.Notes); err != nil {
 			return nil, err
 		}
 		if dateStr.Valid && dateStr.String != "" {
